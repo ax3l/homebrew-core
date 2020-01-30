@@ -1,25 +1,27 @@
 class OpenpmdApi < Formula
   desc "C++ & Python API for Scientific I/O with openPMD"
   homepage "https://openpmd-api.readthedocs.io"
-  url "https://github.com/openPMD/openPMD-api/archive/0.9.0-alpha.tar.gz"
-  sha256 "2fd84f276453122b89ce66d4467ec162669315be2c75ae45d2a514d7b96a3a42"
+  url "https://github.com/openPMD/openPMD-api/archive/0.10.3-alpha.tar.gz"
+  sha256 "4d3677b6e3b674510ec6376978e6fd125ab830c467cf41b982a982e3e242f805"
   head "https://github.com/openPMD/openPMD-api.git", :branch => "dev"
 
   depends_on "cmake" => :build
-  # adios
+  # adios (no package)
   depends_on "adios2"
   depends_on "catch2"
-  depends_on "hdf5"
-  # mpark-variant
+  # "hdf5" (no MPI package)
+  # mpark-variant (no package)
+  depends_on "mpi4py"
   depends_on "nlohmann-json"
   depends_on "numpy"
+  depends_on "open-mpi"
   depends_on "pybind11"
   depends_on "python"
 
   def install
     args = std_cmake_args + %W[
-      -DopenPMD_USE_MPI=OFF
-      -DopenPMD_USE_HDF5=ON
+      -DopenPMD_USE_MPI=ON
+      -DopenPMD_USE_HDF5=OFF
       -DopenPMD_USE_ADIOS1=OFF
       -DopenPMD_USE_ADIOS2=ON
       -DopenPMD_USE_PYTHON=ON
@@ -33,61 +35,29 @@ class OpenpmdApi < Formula
       system "cmake", "..", *args
       system "make", "install"
     end
+
+    (pkgshare/"examples").install "examples/5_write_parallel.cpp"
+    (pkgshare/"examples").install "examples/5_write_parallel.py"
   end
 
   test do
-    (testpath/"write.cpp").write <<~EOS
-      #include <openPMD/openPMD.hpp>
-      #include <memory>
-      #include <numeric>
-      #include <cstdlib>
-      #include <string>
+    system "mpic++", "-std=c++11",
+           (pkgshare/"examples/5_write_parallel.cpp"),
+           "-I#{opt_include}",
+           "-lopenPMD"
+    system "mpiexec",
+           "-n", "2",
+           "./a.out"
+    assert_predicate testpath/"../samples/5_parallel_write.h5", :exist?
 
-      using namespace openPMD;
+    system "#{Formula["python"].opt_bin}/python3",
+           "-c", "import openpmd_api"
 
-      void write(size_t const size, std::string const backend)
-      {
-        std::vector<double> global_data(size*size);
-        std::iota(global_data.begin(), global_data.end(), 0.);
-
-        Series series = Series(
-          std::string("3_write_serial.").append(backend),
-          AccessType::CREATE
-        );
-
-        MeshRecordComponent rho =
-          series
-            .iterations[1]
-            .meshes["rho"][MeshRecordComponent::SCALAR];
-
-        Datatype datatype = determineDatatype(shareRaw(global_data));
-        Extent extent = {size, size};
-        Dataset dataset = Dataset(datatype, extent);
-
-        rho.resetDataset(dataset);
-        series.flush();
-
-        Offset offset = {0, 0};
-        rho.storeChunk(shareRaw(global_data), offset, extent);
-
-        series.flush();
-      }
-
-      int main()
-      {
-        write(3, "h5");
-        write(3, "json");
-        return EXIT_SUCCESS;
-      }
-    EOS
-    system ENV.cxx, "-std=c++11", "write.cpp", "-I#{opt_include}", "-lopenPMD"
-    system "./a.out"
-
-    (testpath/"example.py").write <<~EOS
-      import openpmd_api
-      print(openpmd_api.__version__)
-      print(openpmd_api.variants)
-    EOS
-    system "#{Formula["python"].opt_bin}/python3", "example.py"
+    system "mpiexec",
+           "-n", "2",
+           "#{Formula["python"].opt_bin}/python3",
+           "-m", "mpi4py",
+           (pkgshare/"examples/5_write_parallel.py")
+    assert_predicate testpath/"../samples/5_parallel_write_py.h5", :exist?
   end
 end
