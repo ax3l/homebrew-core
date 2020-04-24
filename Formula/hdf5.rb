@@ -19,6 +19,8 @@ class Hdf5 < Formula
 
   uses_from_macos "zlib"
 
+  conflicts_with "hdf5-mpi", :because => "hdf5-mpi is a variant of hdf5, one can only use one or the other"
+
   def install
     inreplace %w[c++/src/h5c++.in fortran/src/h5fc.in bin/h5cc.in],
       "${libdir}/libhdf5.settings",
