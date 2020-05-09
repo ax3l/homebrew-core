@@ -15,6 +15,7 @@ class Adios2 < Formula
   depends_on "cmake" => :build
   depends_on "gcc" => :build
   depends_on "c-blosc"
+  depends_on "hdf5-mpi"
   depends_on "libfabric"
   depends_on "libpng"
   depends_on "mpi4py"
@@ -30,6 +31,12 @@ class Adios2 < Formula
     url "https://github.com/ornladios/ADIOS2/pull/1805.patch?full_index=1"
     sha256 "6760801cfddc48c6df158295e58d007c8b07abb82a1e79ee89c5a1e3e955d2c1"
   end
+  # Breaking API in HDF5 1.12.0, fix already in post-2.5.0 master
+  # reference: https://github.com/ornladios/ADIOS2/pull/2091
+  patch do
+    url "https://github.com/ornladios/ADIOS2/pull/2091.patch?full_index=1"
+    sha256 "7f9de0ac72341e4c1864d7aad0e852944acb28a3eb8c2503896365282039fcb5"
+  end
 
   def install
     # fix `include/adios2/common/ADIOSConfig.h` file audit failure
@@ -43,7 +50,7 @@ class Adios2 < Formula
       -DADIOS2_USE_BZip2=ON
       -DADIOS2_USE_DataSpaces=OFF
       -DADIOS2_USE_Fortran=ON
-      -DADIOS2_USE_HDF5=OFF
+      -DADIOS2_USE_HDF5=ON
       -DADIOS2_USE_MGARD=OFF
       -DADIOS2_USE_MPI=ON
       -DADIOS2_USE_PNG=ON
