@@ -28,7 +28,7 @@ class Hdf5 < Formula
               "settingsdir=$(libdir)",
               "settingsdir=#{pkgshare}"
 
-    system "autoreconf", "-fiv"
+    system "./autogen.sh"
 
     args = %W[
       --disable-dependency-tracking
